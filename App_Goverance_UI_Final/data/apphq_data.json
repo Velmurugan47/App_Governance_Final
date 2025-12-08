@@ -1,0 +1,145 @@
+[
+  {
+    "ait_number": "AIT-9001",
+    "arm_id": "ARM-7788",
+    "application_name": "Finance Portal",
+    "application_owner": "alice@example.com",
+    "ait_owner": "bob@example.com",
+    "lob_owner": "carol@example.com",
+    "contacts": [
+      "alice@example.com",
+      "bob@example.com",
+      "carol@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9002",
+    "arm_id": "ARM-7789",
+    "application_name": "HR System",
+    "application_owner": "david@example.com",
+    "ait_owner": "eva@example.com",
+    "lob_owner": "frank@example.com",
+    "contacts": [
+      "david@example.com",
+      "eva@example.com",
+      "frank@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9003",
+    "arm_id": "ARM-7790",
+    "application_name": "CRM Database",
+    "application_owner": "grace@example.com",
+    "ait_owner": "henry@example.com",
+    "lob_owner": "iris@example.com",
+    "contacts": [
+      "grace@example.com",
+      "henry@example.com",
+      "iris@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9004",
+    "arm_id": "ARM-7791",
+    "application_name": "Authentication Service",
+    "application_owner": "jack@example.com",
+    "ait_owner": "kate@example.com",
+    "lob_owner": "leo@example.com",
+    "contacts": [
+      "jack@example.com",
+      "kate@example.com",
+      "leo@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9005",
+    "arm_id": "ARM-7792",
+    "application_name": "Marketing Platform",
+    "application_owner": "mary@example.com",
+    "ait_owner": "nathan@example.com",
+    "lob_owner": "olivia@example.com",
+    "contacts": [
+      "mary@example.com",
+      "nathan@example.com",
+      "olivia@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9006",
+    "arm_id": "ARM-7793",
+    "application_name": "Customer Portal",
+    "application_owner": "paul@example.com",
+    "ait_owner": "quinn@example.com",
+    "lob_owner": "rachel@example.com",
+    "contacts": [
+      "paul@example.com",
+      "quinn@example.com",
+      "rachel@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9007",
+    "arm_id": "ARM-7794",
+    "application_name": "ERP System",
+    "application_owner": "sam@example.com",
+    "ait_owner": "tina@example.com",
+    "lob_owner": "uma@example.com",
+    "contacts": [
+      "sam@example.com",
+      "tina@example.com",
+      "uma@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9008",
+    "arm_id": "ARM-7795",
+    "application_name": "Employee Directory",
+    "application_owner": "victor@example.com",
+    "ait_owner": "wendy@example.com",
+    "lob_owner": "xavier@example.com",
+    "contacts": [
+      "victor@example.com",
+      "wendy@example.com",
+      "xavier@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9009",
+    "arm_id": "ARM-7796",
+    "application_name": "Cloud Services Platform",
+    "application_owner": "yara@example.com",
+    "ait_owner": "zack@example.com",
+    "lob_owner": "amy@example.com",
+    "contacts": [
+      "yara@example.com",
+      "zack@example.com",
+      "amy@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9010",
+    "arm_id": "ARM-7797",
+    "application_name": "Sales CRM",
+    "application_owner": "ben@example.com",
+    "ait_owner": "clara@example.com",
+    "lob_owner": "dan@example.com",
+    "contacts": [
+      "ben@example.com",
+      "clara@example.com",
+      "dan@example.com"
+    ]
+  },
+  {
+    "ait_number": "AIT-9011",
+    "arm_id": "ARM-7798",
+    "application_name": "Database Management System",
+    "application_owner": "emma@example.com",
+    "ait_owner": "finn@example.com",
+    "lob_owner": "gina@example.com",
+    "contacts": [
+      "emma@example.com",
+      "finn@example.com",
+      "gina@example.com"
+    ]
+  }
+]
