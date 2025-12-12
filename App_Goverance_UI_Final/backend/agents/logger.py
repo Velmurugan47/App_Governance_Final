@@ -47,14 +47,10 @@ class LoggerAgent:
         )
 
     def invoke(self, tickets: TicketResponse, message: str = None) -> dict:
-        # Pass tickets + message to agent
-        result = self.agent.invoke({"messages": [{"role": "user", "content": "Generate logs"}], "tickets": tickets, "message": message})
-        
-        if isinstance(result, dict) and "messages" in result:
-            for msg in reversed(result["messages"]):
-                if isinstance(msg, ToolMessage) and msg.name == "GenerateLogs":
-                    try:
-                        return json.loads(msg.content)
-                    except Exception as e:
-                        print(f"Error parsing logs: {e}")
-        return {"logs": []}
+        """Generate logs using deterministic logic."""
+        try:
+            # Direct python logic - no LLM needed for basic logging
+            return generate_logs(tickets, message)
+        except Exception as e:
+            print(f"Error generating logs: {e}")
+            return {"logs": []}

@@ -40,16 +40,9 @@ class TicketFetcherAgent:
         )
 
     def invoke(self) -> TicketResponse:
-        # ✅ Call the agent, which internally uses the tool
-        result = self.agent.invoke({"messages": [{"role": "user", "content": "Fetch all tickets"}]})
-        
-        # Extract result from ToolMessage
-        if isinstance(result, dict) and "messages" in result:
-            for msg in reversed(result["messages"]):
-                if isinstance(msg, ToolMessage) and msg.name == "FetchAllTickets":
-                    try:
-                        return TicketResponse.parse_raw(msg.content)
-                    except Exception as e:
-                        print(f"Error parsing tool output: {e}")
-        
-        return TicketResponse(tickets=[])
+        """Fetch tickets directly without LLM overhead for reliability."""
+        try:
+            return fetch_all_tickets(self.data_file)
+        except Exception as e:
+            print(f"Error fetching tickets: {e}")
+            return TicketResponse(tickets=[])

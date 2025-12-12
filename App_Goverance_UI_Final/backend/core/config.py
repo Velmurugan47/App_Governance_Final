@@ -20,7 +20,7 @@ def load_config(config_file=None):
         dict: Configuration dictionary
     """
     if config_file is None:
-        config_file = Path(__file__).parent / "config.json"
+        config_file = Path(__file__).parent.parent.parent / "config" / "config.json"
     
     with open(config_file, "r") as f:
         return json.load(f)

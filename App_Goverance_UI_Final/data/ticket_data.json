@@ -9,7 +9,14 @@
     "sla_deadline": "2025-11-20",
     "created_on": "2025-11-10",
     "description": "Ensure ARM auto-provisioning for role XYZ is enabled and evidence captured.",
-    "arm_id": "ARM-7788"
+    "arm_id": "ARM-7788",
+    "application_name": "Finance Portal",
+    "application_owner": "John Doe",
+    "lob_owner": "Finance LOB",
+    "ait_owner": "Jane Smith",
+    "contacts": [
+      "admin@finance.com"
+    ]
   },
   {
     "ticket_id": "REQ004",
@@ -21,7 +28,14 @@
     "sla_deadline": "2025-11-20",
     "created_on": "2025-11-10",
     "description": "Ensure ARM auto-provisioning for role XYZ is enabled and evidence captured.",
-    "arm_id": "ARM-7789"
+    "arm_id": "ARM-7789",
+    "application_name": "HR System",
+    "application_owner": "Alice Brown",
+    "lob_owner": "HR LOB",
+    "ait_owner": "Bob Wilson",
+    "contacts": [
+      "hr-admin@example.com"
+    ]
   },
   {
     "ticket_id": "REQ005",
@@ -33,7 +47,14 @@
     "sla_deadline": "2025-12-05",
     "created_on": "2025-11-12",
     "description": "Implement data encryption for customer PII in the CRM database.",
-    "arm_id": "ARM-7790"
+    "arm_id": "ARM-7790",
+    "application_name": "CRM",
+    "application_owner": "Charlie Davis",
+    "lob_owner": "Sales LOB",
+    "ait_owner": "Dana White",
+    "contacts": [
+      "crm-support@example.com"
+    ]
   },
   {
     "ticket_id": "REQ006",
@@ -45,7 +66,14 @@
     "sla_deadline": "2025-11-25",
     "created_on": "2025-11-11",
     "description": "Patch critical vulnerability in authentication service (CVE-2024-1234).",
-    "arm_id": "ARM-7791"
+    "arm_id": "ARM-7791",
+    "application_name": "Auth Service",
+    "application_owner": "Eve Black",
+    "lob_owner": "Security LOB",
+    "ait_owner": "Frank Green",
+    "contacts": [
+      "security@example.com"
+    ]
   },
   {
     "ticket_id": "REQ007",
@@ -57,7 +85,14 @@
     "sla_deadline": "2025-12-15",
     "created_on": "2025-11-13",
     "description": "Update access control policies for marketing team resources.",
-    "arm_id": "ARM-7792"
+    "arm_id": "ARM-7792",
+    "application_name": "Marketing Tools",
+    "application_owner": "Grace Hall",
+    "lob_owner": "Marketing LOB",
+    "ait_owner": "Harry King",
+    "contacts": [
+      "marketing@example.com"
+    ]
   },
   {
     "ticket_id": "REQ008",
@@ -69,7 +104,14 @@
     "sla_deadline": "2025-12-10",
     "created_on": "2025-11-14",
     "description": "Enable multi-factor authentication for customer portal application.",
-    "arm_id": "ARM-7793"
+    "arm_id": "ARM-7793",
+    "application_name": "Customer Portal",
+    "application_owner": "Ian Lewis",
+    "lob_owner": "Customer Success LOB",
+    "ait_owner": "Jack Scott",
+    "contacts": [
+      "support@example.com"
+    ]
   },
   {
     "ticket_id": "REQ009",
@@ -81,7 +123,14 @@
     "sla_deadline": "2025-11-28",
     "created_on": "2025-11-15",
     "description": "Implement role-based access control for enterprise resource planning system.",
-    "arm_id": "ARM-7794"
+    "arm_id": "ARM-7794",
+    "application_name": "ERP System",
+    "application_owner": "Karen Young",
+    "lob_owner": "Operations LOB",
+    "ait_owner": "Larry Hill",
+    "contacts": [
+      "erp-admin@example.com"
+    ]
   },
   {
     "ticket_id": "REQ010",
@@ -93,7 +142,14 @@
     "sla_deadline": "2025-11-22",
     "created_on": "2025-11-16",
     "description": "Revoke access for terminated employees across all systems immediately.",
-    "arm_id": "ARM-7795"
+    "arm_id": "ARM-7795",
+    "application_name": "Global Access",
+    "application_owner": "Mike Adams",
+    "lob_owner": "HR LOB",
+    "ait_owner": "Nancy Baker",
+    "contacts": [
+      "access-control@example.com"
+    ]
   },
   {
     "ticket_id": "REQ011",
@@ -105,7 +161,14 @@
     "sla_deadline": "2025-12-08",
     "created_on": "2025-11-17",
     "description": "Configure single sign-on integration for cloud services platform.",
-    "arm_id": "ARM-7796"
+    "arm_id": "ARM-7796",
+    "application_name": "Cloud Platform",
+    "application_owner": "Olivia Clark",
+    "lob_owner": "IT LOB",
+    "ait_owner": "Paul Evans",
+    "contacts": [
+      "cloud-admin@example.com"
+    ]
   },
   {
     "ticket_id": "REQ012",
@@ -117,7 +180,14 @@
     "sla_deadline": "2025-12-20",
     "created_on": "2025-11-18",
     "description": "Update user permissions for sales team quarterly access review.",
-    "arm_id": "ARM-7797"
+    "arm_id": "ARM-7797",
+    "application_name": "SalesForce",
+    "application_owner": "Quinn Foster",
+    "lob_owner": "Sales LOB",
+    "ait_owner": "Rachel Green",
+    "contacts": [
+      "sales-ops@example.com"
+    ]
   },
   {
     "ticket_id": "REQ013",
@@ -129,6 +199,13 @@
     "sla_deadline": "2025-11-30",
     "created_on": "2025-11-19",
     "description": "Implement privileged access management for database administrators.",
-    "arm_id": "ARM-7798"
+    "arm_id": "ARM-7798",
+    "application_name": "DB Admin",
+    "application_owner": "Steve Harris",
+    "lob_owner": "IT LOB",
+    "ait_owner": "Tom Jackson",
+    "contacts": [
+      "db-security@example.com"
+    ]
   }
 ]

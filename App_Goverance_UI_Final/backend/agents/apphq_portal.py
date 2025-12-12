@@ -6,26 +6,39 @@ from langchain_core.tools import Tool
 from langchain_core.messages import ToolMessage
 
 # ✅ Tool function: enrich tickets with AppHQ ownership details
-def enrich_tickets_with_apphq(data_file: str, tickets: TicketResponse) -> TicketResponse:
+def enrich_tickets_with_apphq(data_file: str, tickets) -> TicketResponse:
     """Lookup AIT numbers in AppHQ data and enrich tickets with ownership details."""
+    # Handle string input (from LLM)
+    if isinstance(tickets, str):
+        try:
+            clean_str = tickets.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_str)
+            tickets = TicketResponse(**data)
+        except Exception as e:
+            print(f"DEBUG: Failed to parse tickets string: {e}")
+            return TicketResponse(tickets=[]).json()
+    elif isinstance(tickets, dict):
+        tickets = TicketResponse(**tickets)
+
     with open(data_file, "r") as f:
         sample_data = json.load(f)
 
     enriched_tickets = []
-    for t in tickets.tickets:
-        if t.ait_number:
-            # find matching record
-            details = next((rec for rec in sample_data if rec["ait_number"] == t.ait_number), None)
-            if details:
-                # enrich ticket fields
-                t.application_name = details.get("application_name")
-                t.application_owner = details.get("application_owner")
-                t.lob_owner = details.get("lob_owner")
-                t.ait_owner = details.get("ait_owner")
-                t.contacts = details.get("contacts", [])
-                enriched_tickets.append(t)
+    if hasattr(tickets, 'tickets'):
+        for t in tickets.tickets:
+            if t.ait_number:
+                # find matching record
+                details = next((rec for rec in sample_data if rec["ait_number"] == t.ait_number), None)
+                if details:
+                    # enrich ticket fields
+                    t.application_name = details.get("application_name")
+                    t.application_owner = details.get("application_owner")
+                    t.lob_owner = details.get("lob_owner")
+                    t.ait_owner = details.get("ait_owner")
+                    t.contacts = details.get("contacts", [])
+                    enriched_tickets.append(t)
 
-    return TicketResponse(tickets=enriched_tickets)
+    return TicketResponse(tickets=enriched_tickets).json()
 
 class AppHQResolverAgent:
     def __init__(self, llm=None, data_file=None):
@@ -55,14 +68,27 @@ class AppHQResolverAgent:
         )
 
     def invoke(self, tickets: TicketResponse) -> TicketResponse:
-        # Pass tickets to agent, which internally calls the tool
-        result = self.agent.invoke({"messages": [{"role": "user", "content": "Enrich tickets"}], "tickets": tickets})
-        
-        if isinstance(result, dict) and "messages" in result:
-            for msg in reversed(result["messages"]):
-                if isinstance(msg, ToolMessage) and msg.name == "EnrichTicketsWithAppHQ":
-                    try:
-                        return TicketResponse.parse_raw(msg.content)
-                    except:
-                        pass
-        return TicketResponse(tickets=[])
+        """Enrich tickets using deterministic logic."""
+        try:
+            # Direct python logic
+            with open(self.data_file, "r") as f:
+                sample_data = json.load(f)
+
+            enriched_tickets = []
+            for t in tickets.tickets:
+                if t.ait_number:
+                    # find matching record
+                    details = next((rec for rec in sample_data if rec["ait_number"] == t.ait_number), None)
+                    if details:
+                        # enrich ticket fields
+                        t.application_name = details.get("application_name")
+                        t.application_owner = details.get("application_owner")
+                        t.lob_owner = details.get("lob_owner")
+                        t.ait_owner = details.get("ait_owner")
+                        t.contacts = details.get("contacts", [])
+                        enriched_tickets.append(t)
+            return TicketResponse(tickets=enriched_tickets)
+
+        except Exception as e:
+            print(f"Error enriching tickets: {e}")
+            return TicketResponse(tickets=[])

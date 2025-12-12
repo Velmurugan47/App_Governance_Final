@@ -6,23 +6,37 @@ from langchain_core.tools import Tool
 from langchain_core.messages import ToolMessage
 
 # ✅ Tool function: calculate SLA risk levels
-def prioritize_tickets_by_sla(tickets: TicketResponse) -> TicketResponse:
+def prioritize_tickets_by_sla(tickets) -> TicketResponse:
     """Assign risk levels to tickets based on SLA deadlines."""
-    updated = []
-    for t in tickets.tickets:
+    import json
+    # Handle string input (from LLM)
+    if isinstance(tickets, str):
         try:
-            due = datetime.fromisoformat(t.sla_deadline)
-            days_left = (due - datetime.utcnow()).days
-            if days_left <= 2:
-                t.risk_level = "High"
-            elif days_left <= 5:
-                t.risk_level = "Medium"
-            else:
-                t.risk_level = "Low"
-        except Exception:
-            t.risk_level = "Unknown"
-        updated.append(t)
-    return TicketResponse(tickets=updated)
+            clean_str = tickets.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_str)
+            tickets = TicketResponse(**data)
+        except Exception as e:
+            print(f"DEBUG: Failed to parse tickets string: {e}")
+            return TicketResponse(tickets=[]).json()
+    elif isinstance(tickets, dict):
+        tickets = TicketResponse(**tickets)
+        
+    updated = []
+    if hasattr(tickets, 'tickets'):
+        for t in tickets.tickets:
+            try:
+                due = datetime.fromisoformat(t.sla_deadline)
+                days_left = (due - datetime.utcnow()).days
+                if days_left <= 2:
+                    t.risk_level = "High"
+                elif days_left <= 5:
+                    t.risk_level = "Medium"
+                else:
+                    t.risk_level = "Low"
+            except Exception:
+                t.risk_level = "Unknown"
+            updated.append(t)
+    return TicketResponse(tickets=updated).json()
 
 class SLAPrioritizerAgent:
     def __init__(self, llm=None):
@@ -46,14 +60,25 @@ class SLAPrioritizerAgent:
         )
 
     def invoke(self, tickets: TicketResponse) -> TicketResponse:
-        # Pass tickets to agent, which internally calls the tool
-        result = self.agent.invoke({"messages": [{"role": "user", "content": "Prioritize tickets"}], "tickets": tickets})
-        
-        if isinstance(result, dict) and "messages" in result:
-            for msg in reversed(result["messages"]):
-                if isinstance(msg, ToolMessage) and msg.name == "PrioritizeTicketsBySLA":
-                    try:
-                        return TicketResponse.parse_raw(msg.content)
-                    except:
-                        pass
-        return TicketResponse(tickets=[])
+        """Assign risk levels using deterministic logic."""
+        try:
+            # Direct python logic
+            updated = []
+            for t in tickets.tickets:
+                try:
+                    due = datetime.fromisoformat(t.sla_deadline)
+                    days_left = (due - datetime.utcnow()).days
+                    if days_left <= 2:
+                        t.risk_level = "High"
+                    elif days_left <= 5:
+                        t.risk_level = "Medium"
+                    else:
+                        t.risk_level = "Low"
+                except Exception:
+                    t.risk_level = "Unknown"
+                updated.append(t)
+            return TicketResponse(tickets=updated)
+
+        except Exception as e:
+            print(f"Error prioritizing tickets: {e}")
+            return TicketResponse(tickets=[])

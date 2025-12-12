@@ -12,12 +12,17 @@ from datetime import datetime
 
 load_dotenv()
 
+from pydantic import BaseModel
+
+class PriorityUpdate(BaseModel):
+    priority: str
+
 app = FastAPI(title="Ticket Portal API", version="1.0.0")
 
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,11 +57,11 @@ orchestrator: Optional[IAMOrchestrator] = None
 def get_orchestrator():
     global orchestrator
     if orchestrator is None:
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("OPEN_ROUTER_KEY_ORIGINAL")
         if not api_key:
-            print("⚠️ WARNING: OPENAI_API_KEY not found in environment variables")
+            print("⚠️ WARNING: OPEN_ROUTER_KEY_ORIGINAL not found in environment variables")
         # Config file is now at root level
-        import os
+        # import os removed
         from pathlib import Path
         root_dir = Path(__file__).parent.parent
         config_path = root_dir / "config" / "config.json"
@@ -77,6 +82,7 @@ def convert_ticket_to_frontend(ticket: Ticket) -> dict:
         "category": ticket.category,
         "slaDeadline": ticket.sla_deadline,
         "aitNumber": ticket.ait_number,
+        "deliverableType": ticket.deliverableType,
         "applicationName": ticket.application_name,
         "lobOwner": ticket.lob_owner,
         "aitOwner": ticket.ait_owner,
@@ -105,6 +111,7 @@ def convert_frontend_to_ticket(data: dict) -> Ticket:
         category=data.get("category"),
         sla_deadline=data.get("slaDeadline"),
         ait_number=data.get("aitNumber"),
+        deliverableType=data.get("deliverableType", "IAM Category"),
         application_name=data.get("applicationName"),
         lob_owner=data.get("lobOwner"),
         ait_owner=data.get("aitOwner"),
@@ -152,8 +159,10 @@ async def process_individual_ticket(ticket_id: str):
         if current_stage < 1:
             await update_stage_progress(ticket_id, 1, "in-progress", "AI Agent: Analyzing ticket category...")
             # Call real agent (non-blocking)
+            # Call real agent (non-blocking)
             result = await asyncio.to_thread(orch.categorizer.invoke, ticket_context)
-            if result.tickets:
+            
+            if hasattr(result, 'tickets') and result.tickets:
                 ticket_obj = result.tickets[0]
                 current_tickets[ticket_id]["category"] = ticket_obj.category
                 await update_stage_progress(ticket_id, 1, "completed", f"✅ Confirmed: {ticket_obj.category} ticket")
@@ -254,6 +263,9 @@ async def process_individual_ticket(ticket_id: str):
             if result.tickets:
                 ticket_obj = result.tickets[0]
                 await update_stage_progress(ticket_id, 6, "completed", "✅ Ticket closed")
+            else:
+                 # Fallback if agent returns empty but no crash
+                 await update_stage_progress(ticket_id, 6, "completed", "✅ Ticket closed (No changes)")
             current_stage = 6
             
         # Stage 7: Logging
@@ -336,7 +348,7 @@ async def process_single_ticket(ticket_id: str):
     return JSONResponse(content={"status": "success", "message": "Processing started"})
 
 @app.post("/api/tickets/{ticket_id}/confirm-priority")
-async def confirm_priority(ticket_id: str):
+async def confirm_priority(ticket_id: str, update: PriorityUpdate = None):
     """Confirm priority/risk and continue processing"""
     try:
         if ticket_id not in current_tickets:
@@ -344,13 +356,25 @@ async def confirm_priority(ticket_id: str):
         
         ticket = current_tickets[ticket_id]
         
-        # Check if waiting for priority confirmation
+        # Idempotency check: If already confirmed (stage > 2 or waiting flag cleared), return success
         if not ticket.get("waitingForPriorityConfirmation", False):
+            # Check if we already moved past this validation
+            if ticket.get("currentStage", 0) >= 2:
+                 return JSONResponse(content={"status": "success", "message": "Priority already confirmed"})
             return JSONResponse(status_code=400, content={"error": "Ticket is not waiting for priority confirmation"})
         
+        # Update priority if provided
+        if update and update.priority:
+            current_tickets[ticket_id]["priority"] = update.priority.lower()
+            current_tickets[ticket_id]["risk_level"] = update.priority.upper()
+            ticket["priority"] = update.priority.lower()
+            ticket["risk_level"] = update.priority.upper()
+
         # Mark confirmation as completed
         current_tickets[ticket_id]["waitingForPriorityConfirmation"] = False
-        await update_stage_progress(ticket_id, 2, "completed", f"✅ Risk Confirmed: {ticket.get('priority', 'medium').upper()}")
+        
+        confirmed_risk = ticket.get('risk_level', 'MEDIUM')
+        await update_stage_progress(ticket_id, 2, "completed", f"✅ Risk Confirmed: {confirmed_risk}")
         
         # Continue processing from stage 3
         asyncio.create_task(process_individual_ticket(ticket_id))
@@ -371,8 +395,10 @@ async def confirm_closure(ticket_id: str):
         
         ticket = current_tickets[ticket_id]
         
-        # Check if waiting for closure confirmation
+        # Idempotency check
         if not ticket.get("waitingForClosureConfirmation", False):
+            if ticket.get("closure_approved", False) or ticket.get("currentStage", 0) >= 6:
+                return JSONResponse(content={"status": "success", "message": "Closure already confirmed"})
             return JSONResponse(status_code=400, content={"error": "Ticket is not waiting for closure confirmation"})
         
         # Mark confirmation as completed and approve closure
@@ -399,8 +425,10 @@ async def approve_review(ticket_id: str):
         
         ticket = current_tickets[ticket_id]
         
-        # Check if waiting for review
+        # Idempotency check
         if not ticket.get("waitingForReview", False):
+            if ticket.get("currentStage", 0) > 5 or not ticket.get("waitingForReview", True):
+                 return JSONResponse(content={"status": "success", "message": "Review already approved"})
             return JSONResponse(status_code=400, content={"error": "Ticket is not waiting for review"})
         
         # Mark review as completed

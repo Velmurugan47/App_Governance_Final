@@ -5,13 +5,17 @@ from typing import List, Dict, Any
 import asyncio
 import json
 from datetime import datetime
+from pydantic import BaseModel
+
+class PriorityUpdate(BaseModel):
+    priority: str
 
 app = FastAPI(title="Ticket Portal API - Demo Mode", version="1.0.0")
 
 # CORS middleware for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,12 +55,17 @@ def load_tickets_from_json():
         from pathlib import Path
         root_dir = Path(__file__).parent.parent
         
+        print(f"DEBUG: Root dir calculated as: {root_dir}")
+        print(f"DEBUG: Looking for data at: {root_dir / 'data' / 'ticket_data.json'}")
+        
         with open(root_dir / "data" / "ticket_data.json", "r") as f:
             tickets = json.load(f)
+            print(f"DEBUG: Loaded {len(tickets)} tickets from JSON")
         
         # Load AppHQ data
         with open(root_dir / "data" / "apphq_data.json", "r") as f:
             apphq_data = json.load(f)
+            print(f"DEBUG: Loaded {len(apphq_data)} AppHQ records from JSON")
         
         # Convert to frontend format
         frontend_tickets = []
@@ -83,9 +92,12 @@ def load_tickets_from_json():
             }
             frontend_tickets.append(frontend_ticket)
         
+        print(f"DEBUG: Converted {len(frontend_tickets)} tickets for frontend")
         return frontend_tickets
     except Exception as e:
         print(f"Error loading tickets from JSON: {e}")
+        import traceback
+        traceback.print_exc()
         # Fallback to empty list
         return []
 
@@ -300,7 +312,7 @@ async def process_single_ticket(ticket_id: str):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.post("/api/tickets/{ticket_id}/confirm-priority")
-async def confirm_priority(ticket_id: str):
+async def confirm_priority(ticket_id: str, update: PriorityUpdate = None):
     """Confirm priority/risk and continue processing"""
     try:
         if ticket_id not in current_tickets:
@@ -312,9 +324,19 @@ async def confirm_priority(ticket_id: str):
         if not ticket.get("waitingForPriorityConfirmation", False):
             return JSONResponse(status_code=400, content={"error": "Ticket is not waiting for priority confirmation"})
         
+        # Update priority if provided
+        if update and update.priority:
+            # Update both priority (lowercase) and risk_level (Capitalized) for consistency
+            current_tickets[ticket_id]["priority"] = update.priority.lower()
+            current_tickets[ticket_id]["risk_level"] = update.priority.capitalize() 
+            ticket["priority"] = update.priority.lower()
+            ticket["risk_level"] = update.priority.capitalize()
+
         # Mark confirmation as completed
         current_tickets[ticket_id]["waitingForPriorityConfirmation"] = False
-        await update_stage_progress(ticket_id, 2, "completed", f"Risk Confirmed: {ticket.get('risk_level', 'Medium')}")
+        
+        confirmed_risk = ticket.get('risk_level', 'Medium')
+        await update_stage_progress(ticket_id, 2, "completed", f"Risk Confirmed: {confirmed_risk}")
         
         # Continue processing from stage 3
         asyncio.create_task(process_individual_ticket(ticket_id))

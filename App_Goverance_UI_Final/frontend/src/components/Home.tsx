@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import Header from './Header';
 import Footer from './Footer';
 import { AlertCircle, Clock, CheckCircle2, PlayCircle, User, Calendar, Loader2, CheckCheck, Play, CheckCircle, Activity, FileText, Tag, X } from 'lucide-react';
@@ -52,6 +53,7 @@ export default function Home({ currentUser, onSignOut }: HomeProps) {
   const [showAllTickets, setShowAllTickets] = useState(true); // Show all tickets by default
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showClosureModal, setShowClosureModal] = useState(false);
+  const [showStepsModal, setShowStepsModal] = useState(false);
   const [emailTemplate, setEmailTemplate] = useState<{ to: string, subject: string, body: string } | null>(null);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -237,8 +239,17 @@ export default function Home({ currentUser, onSignOut }: HomeProps) {
     try {
       setStatusMessage(`Confirming priority for ticket ${ticketId}...`);
 
+      // Get priority from currently selected ticket (which reflects dropdown state)
+      const priority = selectedTicket && selectedTicket.id === ticketId
+        ? selectedTicket.priority
+        : 'medium';
+
       const response = await fetch(`http://localhost:8000/api/tickets/${ticketId}/confirm-priority`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ priority }),
       });
 
       if (!response.ok) {
@@ -545,9 +556,12 @@ export default function Home({ currentUser, onSignOut }: HomeProps) {
           </div>
 
           {/* Ticket Detail Panel */}
+          {/* Ticket Detail Panel */}
           {selectedTicket && (
-            <div className="md:sticky md:top-24 h-fit">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="md:sticky md:top-24 h-[calc(100vh-8rem)] bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+
+              {/* FIXED HEADER SECTION */}
+              <div className="p-6 pb-2 border-b border-gray-100 bg-white z-20">
                 <div className="flex items-start justify-between mb-4">
                   <h2 className="text-gray-900 font-bold">{selectedTicket.id}</h2>
                   <button
@@ -558,7 +572,94 @@ export default function Home({ currentUser, onSignOut }: HomeProps) {
                   </button>
                 </div>
 
-                <h3 className="text-gray-900 mb-4 font-semibold">{selectedTicket.title}</h3>
+                {/* ACTION BUTTONS Container - Always Visible */}
+                <div className="mb-2">
+                  {(() => {
+                    // 1. Priority Confirmation with Editable Dropdown
+                    if (selectedTicket.waitingForPriorityConfirmation ||
+                      (selectedTicket.stages[2].status === 'completed' &&
+                        selectedTicket.stages[3].status !== 'in-progress' &&
+                        selectedTicket.stages[3].status !== 'completed')) {
+                      return (
+                        <div className="space-y-3 p-1">
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <p className="text-sm text-blue-800 font-medium">
+                              ⚡ Priority calculated as <span className="font-bold uppercase">{selectedTicket.priority}</span>. Confirm to proceed.
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleConfirmPriority(selectedTicket.id)}
+                            className="w-full bg-blue-600 text-white border border-blue-700 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg font-bold"
+                          >
+                            <CheckCheck className="w-5 h-5" />
+                            Confirm Priority & Continue
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    // 2. Review Approval
+                    if (selectedTicket.stages[5].status === 'in-progress' || selectedTicket.waitingForReview) {
+                      return (
+                        <button
+                          onClick={() => handleShowEmailPreview(selectedTicket.id)}
+                          className="w-full bg-green-600 text-white border border-green-700 py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 shadow-lg animate-pulse font-bold"
+                        >
+                          <CheckCheck className="w-5 h-5" />
+                          Review Email & Approve
+                        </button>
+                      );
+                    }
+
+                    // 3. Closure Confirmation
+                    if (selectedTicket.stages[6].status === 'in-progress' || selectedTicket.waitingForClosureConfirmation) {
+                      return (
+                        <button
+                          onClick={() => setShowClosureModal(true)}
+                          className="w-full bg-blue-600 text-white border border-blue-700 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg animate-pulse font-bold"
+                        >
+                          <CheckCheck className="w-5 h-5" />
+                          Confirm Closure
+                        </button>
+                      );
+                    }
+
+                    // 4. Start Processing
+                    if (selectedTicket.status === 'not-started') {
+                      return (
+                        <button
+                          onClick={() => handleProcessTicket(selectedTicket.id)}
+                          className="w-full bg-blue-600 text-white border border-blue-700 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-sm font-bold"
+                        >
+                          <Play className="w-5 h-5" />
+                          Start Processing
+                        </button>
+                      );
+                    }
+
+                    // 5. Processing State
+                    if (selectedTicket.status === 'in-progress') {
+                      return (
+                        <div className="w-full bg-blue-50 text-blue-700 py-3 rounded-lg flex items-center justify-center gap-2 border border-blue-100 font-medium">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Processing...
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="w-full bg-green-50 text-green-700 py-3 rounded-lg flex items-center justify-center gap-2 border border-green-100 font-medium">
+                        <CheckCircle className="w-5 h-5" />
+                        Completed
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* SCROLLABLE CONTENT AREA */}
+              <div className="flex-1 overflow-y-auto p-6 pt-0">
+                <h3 className="text-gray-900 mb-4 font-semibold mt-4">{selectedTicket.title}</h3>
 
                 <div className="space-y-3 mb-6 text-sm">
                   <div className="grid grid-cols-2 gap-4">
@@ -624,95 +725,19 @@ export default function Home({ currentUser, onSignOut }: HomeProps) {
                   </div>
                 </div>
 
+
+
                 <div className="pt-6 border-t border-gray-200">
-
-                  {/* Action Buttons - MOVED HERE FOR VISIBILITY */}
-                  <div className="mb-6">
-                    {(() => {
-
-
-
-                      // 1. Priority Confirmation
-                      if (selectedTicket.waitingForPriorityConfirmation ||
-                        (selectedTicket.stages[2].status === 'completed' &&
-                          selectedTicket.stages[3].status !== 'in-progress' &&
-                          selectedTicket.stages[3].status !== 'completed')) {
-                        return (
-                          <button
-                            onClick={() => handleConfirmPriority(selectedTicket.id)}
-                            className="w-full bg-blue-600 text-white border border-blue-700 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg font-bold"
-                            style={{ backgroundColor: '#2563eb', color: 'white' }} /* Force visibility */
-                          >
-                            <CheckCheck className="w-5 h-5" />
-                            Confirm Priority & Continue
-                          </button>
-                        );
-                      }
-
-                      // 2. Review Approval
-                      if (selectedTicket.stages[5].status === 'in-progress' || selectedTicket.waitingForReview) {
-                        return (
-                          <button
-                            onClick={() => handleShowEmailPreview(selectedTicket.id)}
-                            className="w-full bg-green-600 text-white border border-green-700 py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 shadow-lg animate-pulse font-bold"
-                          >
-                            <CheckCheck className="w-5 h-5" />
-                            Review Email & Approve
-                          </button>
-                        );
-                      }
-
-                      // 3. Closure Confirmation
-                      if (selectedTicket.stages[6].status === 'in-progress' || selectedTicket.waitingForClosureConfirmation) {
-                        return (
-                          <button
-                            onClick={() => setShowClosureModal(true)}
-                            className="w-full bg-blue-600 text-white border border-blue-700 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-lg animate-pulse font-bold"
-                          >
-                            <CheckCheck className="w-5 h-5" />
-                            Confirm Closure
-                          </button>
-                        );
-                      }
-
-                      // 4. Start Processing
-                      if (selectedTicket.status === 'not-started') {
-                        return (
-                          <button
-                            onClick={() => handleProcessTicket(selectedTicket.id)}
-                            className="w-full bg-blue-600 text-white border border-blue-700 py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 shadow-sm font-bold"
-                          >
-                            <Play className="w-5 h-5" />
-                            Start Processing
-                          </button>
-                        );
-                      }
-
-                      // 5. Processing State (Default for in-progress)
-                      if (selectedTicket.status === 'in-progress') {
-                        return (
-                          <div className="w-full bg-blue-50 text-blue-700 py-3 rounded-lg flex items-center justify-center gap-2 border border-blue-100 font-medium">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Processing...
-                          </div>
-                        );
-                      }
-
-                      // 6. Completed State
-                      return (
-                        <div className="w-full bg-green-50 text-green-700 py-3 rounded-lg flex items-center justify-center gap-2 border border-green-100 font-medium">
-                          <CheckCircle className="w-5 h-5" />
-                          Completed
-                        </div>
-                      );
-                    })()}
-                  </div>
-
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-gray-900 font-semibold">Agent Pipeline Progress</h3>
-                    <span className="text-gray-600 text-sm">
-                      {selectedTicket.currentStage + 1}/{selectedTicket.stages.length}
-                    </span>
+                    <button
+                      onClick={() => setShowStepsModal(true)}
+                      className="px-2.5 py-1 bg-purple-600 text-white text-xs rounded-md hover:bg-purple-700 transition flex items-center gap-1 shadow-sm"
+                      title="View detailed progress in modal"
+                    >
+                      <Activity className="w-3 h-3" />
+                      Expand
+                    </button>
                   </div>
 
                   <div className="space-y-3">
@@ -746,157 +771,258 @@ export default function Home({ currentUser, onSignOut }: HomeProps) {
                       );
                     })}
                   </div>
-
                 </div>
               </div>
             </div>
           )}
         </div>
-      </main>
+      </main >
 
       {/* Email Preview Modal */}
-      {showEmailModal && emailTemplate && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4">
-              <h2 className="text-xl font-bold">📧 Email Preview - Evidence Collection</h2>
-              <p className="text-blue-100 text-sm mt-1">Review the email before sending to application owner</p>
-            </div>
+      {
+        showEmailModal && emailTemplate && createPortal(
+          <div className="flex items-center justify-center p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}>
+            <div className="bg-white rounded-lg shadow-2xl w-[600px] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" style={{ maxHeight: '90vh' }}>
 
-            {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* To Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">To:</label>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900">
-                  {emailTemplate.to}
+              {/* Header */}
+              <div className="text-white px-6 py-4 flex items-center justify-between" style={{ backgroundColor: '#2563eb' }}>
+                <div>
+                  <h2 className="text-xl font-bold">📧 Review Email</h2>
+                  <p className="text-blue-100 text-sm mt-1">Ticket {selectedTicket?.id}</p>
+                </div>
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  className="p-1 text-white hover:bg-blue-700/50 rounded transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300 space-y-4">
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">To</label>
+                  <div className="text-sm font-medium text-gray-900 bg-gray-50 p-2 rounded border border-gray-200">{emailTemplate.to}</div>
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Subject</label>
+                  <div className="text-sm font-medium text-gray-900 bg-gray-50 p-2 rounded border border-gray-200">{emailTemplate.subject}</div>
+                </div>
+
+                <div>
+                  <label className="block text-xs uppercase tracking-wider text-gray-500 font-bold mb-1">Message Body</label>
+                  <div className="text-sm text-gray-800 bg-gray-50 p-3 rounded border border-gray-200 whitespace-pre-wrap font-mono leading-relaxed" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {emailTemplate.body}
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded flex gap-2 items-start">
+                  <span className="text-lg">ℹ️</span>
+                  <span className="mt-0.5">This email will be sent immediately to the application owner.</span>
                 </div>
               </div>
 
-              {/* Subject Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Subject:</label>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 font-medium">
-                  {emailTemplate.subject}
-                </div>
-              </div>
-
-              {/* Body Field */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Message:</label>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-900 whitespace-pre-wrap font-mono text-sm min-h-[200px]">
-                  {emailTemplate.body}
-                </div>
-              </div>
-
-              {/* Info Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-800 text-sm">
-                  <strong>ℹ️ Note:</strong> This email will be sent to the application owner requesting evidence for compliance verification.
-                  Please review carefully before approving.
-                </p>
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', alignItems: 'center' }}>
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium shadow-sm transition flex items-center justify-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => selectedTicket && handleApproveReview(selectedTicket.id)}
+                  className="px-4 py-2 text-white rounded font-bold shadow-md hover:brightness-110 flex items-center gap-2 transition"
+                  style={{ backgroundColor: '#16a34a' }}
+                >
+                  <CheckCheck className="w-4 h-4" /> Approve & Send
+                </button>
               </div>
             </div>
-
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex gap-3 border-t border-gray-200">
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-              >
-                ✕ Cancel
-              </button>
-              <button
-                onClick={() => selectedTicket && handleApproveReview(selectedTicket.id)}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium shadow-lg"
-              >
-                ✓ Approve & Send Email
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )
+      }
 
       {/* Closure Confirmation Modal */}
-      {showClosureModal && selectedTicket && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4">
-              <h2 className="text-xl font-bold">✅ Confirm Ticket Closure</h2>
-              <p className="text-purple-100 text-sm mt-1">Final verification before closing ticket</p>
-            </div>
+      {
+        showClosureModal && selectedTicket && createPortal(
+          <div className="flex items-center justify-center p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}>
+            <div className="bg-white rounded-lg shadow-2xl w-[600px] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200" style={{ maxHeight: '90vh' }}>
 
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-semibold text-green-800 mb-2">Summary of Actions Taken:</h3>
-                <ul className="space-y-2 text-sm text-green-700">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Verified IAM Category
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Calculated Risk & SLA ({selectedTicket.slaDeadline})
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Verified Application Owner ({selectedTicket.lobOwner})
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Collected Evidence via Email
-                  </li>
-                </ul>
+              {/* Header */}
+              <div className="text-white px-6 py-4 flex items-center justify-between" style={{ backgroundColor: '#7e22ce' }}>
+                <div>
+                  <h2 className="text-xl font-bold">✅ Confirm Closure</h2>
+                  <p className="text-purple-100 text-sm mt-1">Ticket {selectedTicket?.id}</p>
+                </div>
+                <button
+                  onClick={() => setShowClosureModal(false)}
+                  className="p-1 text-white hover:bg-purple-700/50 rounded transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
               </div>
 
-              <p className="text-gray-600 text-sm">
-                The application owner has been contacted and evidence has been collected.
-                Are you sure you want to close ticket <strong>{selectedTicket.id}</strong>?
-              </p>
-            </div>
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-gray-300">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                  <h3 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                    <CheckCheck className="w-5 h-5" /> Actions Verified
+                  </h3>
+                  <ul className="space-y-2 text-sm text-green-700 ml-1">
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> IAM Category Verified</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Risk Assessment Complete</li>
+                    <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Evidence Collected</li>
+                  </ul>
+                </div>
 
-            {/* Modal Footer */}
-            <div className="bg-gray-50 px-6 py-4 flex gap-3 border-t border-gray-200">
-              <button
-                onClick={() => setShowClosureModal(false)}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium"
-              >
-                ✕ Cancel
-              </button>
-              <button
-                onClick={() => handleConfirmClosure(selectedTicket.id)}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white border border-blue-700 rounded-lg hover:bg-blue-700 transition font-bold shadow-md flex items-center justify-center gap-2"
-              >
-                <CheckCheck className="w-4 h-4" /> Confirm & Close Ticket
-              </button>
+                <p className="text-gray-600">
+                  You are about to close this ticket. This action will archive the collected evidence and notify the requester.
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 flex justify-end items-center gap-3 border-t border-gray-200">
+                <button
+                  onClick={() => setShowClosureModal(false)}
+                  className="px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 font-medium shadow-sm transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => selectedTicket && handleConfirmClosure(selectedTicket.id)}
+                  className="px-4 py-2 text-white rounded font-bold shadow-md hover:brightness-110 flex items-center gap-2 transition"
+                  style={{ backgroundColor: '#7e22ce' }}
+                >
+                  <CheckCheck className="w-4 h-4" /> Confirm & Close
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      }
+
+      {/* Agent Pipeline Progress Modal */}
+      {
+        showStepsModal && selectedTicket && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold">🤖 Agent Pipeline Progress</h2>
+                    <p className="text-purple-100 text-sm mt-1">
+                      Ticket {selectedTicket.id} - Stage {selectedTicket.currentStage + 1}/{selectedTicket.stages.length}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowStepsModal(false)}
+                    className="text-white hover:text-purple-200 transition"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="space-y-4">
+                  {selectedTicket.stages.map((stage, index) => {
+                    const isCompleted = stage.status === 'completed';
+                    const isCurrent = stage.status === 'in-progress';
+                    const isError = stage.status === 'error';
+
+                    return (
+                      <div
+                        key={stage.id}
+                        className={`flex items-start gap-4 p-4 rounded-lg border-2 transition ${isCurrent ? 'bg-blue-50 border-blue-300 shadow-md' :
+                          isCompleted ? 'bg-green-50 border-green-200' :
+                            isError ? 'bg-red-50 border-red-200' :
+                              'bg-gray-50 border-gray-200'
+                          }`}
+                      >
+                        <div
+                          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${getStageStatusColor(stage.status)}`}
+                        >
+                          {isCompleted ? (
+                            <CheckCircle2 className="w-6 h-6" />
+                          ) : isError ? (
+                            <AlertCircle className="w-6 h-6" />
+                          ) : isCurrent ? (
+                            <Loader2 className="w-6 h-6 animate-spin" />
+                          ) : (
+                            <span className="text-sm font-bold">{index + 1}</span>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <p className={`font-semibold text-lg ${isCurrent ? 'text-blue-700' :
+                              isCompleted ? 'text-green-700' :
+                                isError ? 'text-red-700' :
+                                  'text-gray-700'
+                              }`}>
+                              {stage.name}
+                            </p>
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${isCompleted ? 'bg-green-100 text-green-700' :
+                              isCurrent ? 'bg-blue-100 text-blue-700' :
+                                isError ? 'bg-red-100 text-red-700' :
+                                  'bg-gray-100 text-gray-600'
+                              }`}>
+                              {stage.status.toUpperCase().replace('-', ' ')}
+                            </span>
+                          </div>
+                          {stage.message && (
+                            <p className="text-sm text-gray-600 mt-2 bg-white p-2 rounded border border-gray-200">
+                              {stage.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-gray-50 px-6 py-4 flex justify-end border-t border-gray-200">
+                <button
+                  onClick={() => setShowStepsModal(false)}
+                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium shadow-md"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Success Toast Notification */}
-      {showSuccessToast && (
-        <div className="fixed bottom-8 right-8 bg-white border-l-4 border-green-500 shadow-2xl rounded-lg p-4 flex items-center gap-4 animate-slide-up z-50 max-w-md">
-          <div className="bg-green-100 p-2 rounded-full">
-            <CheckCircle2 className="w-6 h-6 text-green-600" />
+      {
+        showSuccessToast && (
+          <div className="fixed bottom-8 right-8 bg-white border-l-4 border-green-500 shadow-2xl rounded-lg p-4 flex items-center gap-4 animate-slide-up z-50 max-w-md">
+            <div className="bg-green-100 p-2 rounded-full">
+              <CheckCircle2 className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-bold text-gray-900">Ticket Processed Successfully!</h4>
+              <p className="text-sm text-gray-600">Ticket {selectedTicket?.id} has been closed and logged.</p>
+            </div>
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              className="text-gray-400 hover:text-gray-600 ml-2"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div>
-            <h4 className="font-bold text-gray-900">Ticket Processed Successfully!</h4>
-            <p className="text-sm text-gray-600">Ticket {selectedTicket?.id} has been closed and logged.</p>
-          </div>
-          <button
-            onClick={() => setShowSuccessToast(false)}
-            className="text-gray-400 hover:text-gray-600 ml-2"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+        )
+      }
 
       <Footer />
-    </div>
+    </div >
   );
 }

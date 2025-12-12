@@ -5,13 +5,27 @@ from langchain_core.tools import Tool
 from langchain_core.messages import ToolMessage
 
 # ✅ Tool function: close tickets by appending evidence message
-def close_tickets(tickets: TicketResponse) -> TicketResponse:
+def close_tickets(tickets) -> TicketResponse:
     """Mark tickets as closed by appending evidence message to description."""
+    import json
+    # Handle string input (from LLM)
+    if isinstance(tickets, str):
+        try:
+            clean_str = tickets.replace("```json", "").replace("```", "").strip()
+            data = json.loads(clean_str)
+            tickets = TicketResponse(**data)
+        except Exception as e:
+            print(f"DEBUG: Failed to parse tickets string: {e}")
+            return TicketResponse(tickets=[]).json()
+    elif isinstance(tickets, dict):
+        tickets = TicketResponse(**tickets)
+
     updated = []
-    for t in tickets.tickets:
-        t.description = (t.description or "") + " | Evidence attached, ticket closed."
-        updated.append(t)
-    return TicketResponse(tickets=updated)
+    if hasattr(tickets, 'tickets'):
+        for t in tickets.tickets:
+            t.description = (t.description or "") + " | Evidence attached, ticket closed."
+            updated.append(t)
+    return TicketResponse(tickets=updated).json()
 
 class CloserAgent:
     def __init__(self, llm=None):
@@ -35,14 +49,15 @@ class CloserAgent:
         )
 
     def invoke(self, tickets: TicketResponse) -> TicketResponse:
-        # Pass tickets to agent, which internally calls the tool
-        result = self.agent.invoke({"messages": [{"role": "user", "content": "Close tickets"}], "tickets": tickets})
-        
-        if isinstance(result, dict) and "messages" in result:
-            for msg in reversed(result["messages"]):
-                if isinstance(msg, ToolMessage) and msg.name == "CloseTickets":
-                    try:
-                        return TicketResponse.parse_raw(msg.content)
-                    except:
-                        pass
-        return TicketResponse(tickets=[])
+        """Close tickets using deterministic logic."""
+        try:
+            # Direct python logic
+            updated = []
+            for t in tickets.tickets:
+                t.description = (t.description or "") + " | Evidence attached, ticket closed."
+                updated.append(t)
+            return TicketResponse(tickets=updated)
+
+        except Exception as e:
+            print(f"Error closing tickets: {e}")
+            return TicketResponse(tickets=[])

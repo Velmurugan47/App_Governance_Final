@@ -11,7 +11,7 @@ class EvidenceCollectorAgent:
         self.llm = llm
         # Load config.json
         self.config_file = config_file or os.path.join(
-            os.path.dirname(__file__), "..", "config", "config.json"
+            os.path.dirname(__file__), "..", "..", "config", "config.json"
         )
         with open(self.config_file, "r") as f:
             config = json.load(f)
