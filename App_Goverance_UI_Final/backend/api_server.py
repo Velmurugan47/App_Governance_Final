@@ -241,7 +241,9 @@ async def process_individual_ticket(ticket_id: str):
             return # Stop for review
             
         # Stage 6: Ticket Closure
-        if current_stage < 6:
+        # Run if we are at stage 6 (or previous stages done) AND it's not completed yet
+        stage_6_status = current_tickets[ticket_id]["stages"][6]["status"]
+        if current_stage < 6 or (current_stage == 6 and stage_6_status != "completed"):
             # Check if we have approval to proceed
             if not current_tickets[ticket_id].get("closure_approved", False):
                 await update_stage_progress(ticket_id, 6, "in-progress", "Agent: Preparing for closure...")
@@ -269,7 +271,9 @@ async def process_individual_ticket(ticket_id: str):
             current_stage = 6
             
         # Stage 7: Logging
-        if current_stage < 7:
+        # Run only if Stage 6 is fully completed
+        stage_6_status = current_tickets[ticket_id]["stages"][6]["status"]
+        if current_stage < 7 and stage_6_status == "completed":
             await update_stage_progress(ticket_id, 7, "in-progress", "Agent: Logging results...")
             ticket_context.tickets = [ticket_obj]
             await asyncio.to_thread(orch.logger.invoke, ticket_context)
